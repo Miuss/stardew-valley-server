@@ -1,36 +1,52 @@
+FROM         --platform=$TARGETOS/$TARGETARCH debian:bookworm-slim
 
-FROM        --platform=$TARGETOS/$TARGETARCH ubuntu:24.04
+LABEL        author="GenesisMiuss" maintainer="developer@ocent.net"
 
-LABEL       author="GenesisMiuss" maintainer="miuss@ocent.net"
+LABEL        org.opencontainers.image.source="https://github.com/ocent-network/stardew-valley-server"
+LABEL        org.opencontainers.image.licenses=MIT
 
-LABEL       org.opencontainers.image.source="https://github.com/miuss/stardew-valley-server"
-LABEL       org.opencontainers.image.licenses=MIT
+ENV          DEBIAN_FRONTEND=noninteractive
 
-ENV         DEBIAN_FRONTEND=noninteractive
+RUN          useradd -m -d /home/container -s /bin/bash container
 
-## Add container user
-RUN         useradd -m -d /home/container -s /bin/bash container
-ENV         USER=container HOME=/home/container
+RUN          ln -s /home/container/ /nonexistent
+
+ENV          USER=container HOME=/home/container
 
 ## Update base packages
-RUN         apt update \
-            && apt upgrade -y
+RUN          apt update \
+             && apt upgrade -y
 
 ## Install dependencies
-RUN         apt install -y gcc g++ libgcc1 libc++-dev gdb libc6 git wget curl tar zip unzip binutils xz-utils liblzo2-2 cabextract iproute2 net-tools netcat-openbsd telnet libatomic1 libsdl1.2debian libsdl2-2.0-0 \
-                libfontconfig icu-devtools libunwind8 sqlite3 libsqlite3-dev libzip4 locales ffmpeg apt-transport-https init-system-helpers \
-                libcurl3-gnutls liblua5.1-0 libluajit-5.1-2 libsqlite3-0 bzip2 zlib1g libevent-dev libmariadb-dev-compat libmariadb-dev libssl-dev \
-                libfluidsynth-dev libmariadb-dev libicu-dev libssl3 libduktape207 libjsoncpp-dev libleveldb1d libncurses6 libncursesw6 tini ca-certificates x11vnc i3 xvfb socat
+RUN          apt install -y gcc g++ libgcc-12-dev libc++-dev gdb libc6 git wget curl tar zip unzip binutils xz-utils liblzo2-2 cabextract iproute2 net-tools netcat-traditional telnet libatomic1 libsdl1.2debian libsdl2-2.0-0 \
+             libfontconfig1 icu-devtools libunwind8 libssl-dev sqlite3 libsqlite3-dev libmariadb-dev-compat libduktape207 locales ffmpeg gnupg2 apt-transport-https software-properties-common ca-certificates \
+             liblua5.3-0 libz3-dev libzadc4 rapidjson-dev tzdata libevent-dev libzip4 libprotobuf32 libfluidsynth3 procps libstdc++6 tini ca-certificates x11vnc i3 xvfb socat
+
+# Temp fix for libicu66.1 for RAGE-MP and libssl1.1 for fivem and many more
+RUN         if [ "$(uname -m)" = "x86_64" ]; then \
+                wget http://archive.ubuntu.com/ubuntu/pool/main/i/icu/libicu66_66.1-2ubuntu2.1_amd64.deb && \
+                wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.0g-2ubuntu4_amd64.deb && \
+                dpkg -i libicu66_66.1-2ubuntu2.1_amd64.deb && \
+                dpkg -i libssl1.1_1.1.0g-2ubuntu4_amd64.deb && \
+                rm libicu66_66.1-2ubuntu2.1_amd64.deb libssl1.1_1.1.0g-2ubuntu4_amd64.deb; \
+            fi
+# ARM64
+RUN         if [ ! "$(uname -m)" = "x86_64" ]; then \
+                wget http://ports.ubuntu.com/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_arm64.deb && \
+                dpkg -i libssl1.1_1.1.1f-1ubuntu2_arm64.deb && \
+                rm libssl1.1_1.1.1f-1ubuntu2_arm64.deb; \
+            fi
 
 ## Configure locale
-RUN         update-locale lang=en_US.UTF-8 \
-            && dpkg-reconfigure --frontend noninteractive locales
+RUN          update-locale lang=en_US.UTF-8 \
+             && dpkg-reconfigure --frontend noninteractive locales
+
 
 WORKDIR     /home/container
 
-STOPSIGNAL  SIGINT
+STOPSIGNAL SIGINT
 
 COPY        --chown=container:container ./entrypoint.sh /entrypoint.sh
 RUN         chmod +x /entrypoint.sh
-ENTRYPOINT  ["/usr/bin/tini", "-g", "--"]
+ENTRYPOINT    ["/usr/bin/tini", "-g", "--"]
 CMD         ["/entrypoint.sh"]
