@@ -1,16 +1,4 @@
 FROM         --platform=$TARGETOS/$TARGETARCH debian:bookworm-slim
-# 使用 caddy:builder 作为基础镜像，这个镜像包含了 Caddy 的构建工具 xcaddy
-FROM caddy:builder AS builder
-
-# 使用 xcaddy build 命令构建 Caddy，并添加阿里 DNS Module
-RUN xcaddy build \
-    --with github.com/caddy-dns/alidns
-
-# 使用最新的 caddy 镜像作为基础镜像
-FROM caddy:latest
-
-# 从 builder 阶段复制构建好的 Caddy 二进制文件到当前镜像中
-COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 
 LABEL        author="GenesisMiuss" maintainer="developer@ocent.net"
 
